@@ -1,210 +1,57 @@
-import logging
 import telebot
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    MessageHandler,
-    Filters,
-    ConversationHandler,
-)
+from Token import TOKEN
+from MATH import *
 
-# Включим ведение журнала
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
-# Определяем константы этапов разговора
-GENDER, PHOTO, LOCATION, BIO = range(4)
-
-# функция обратного вызова точки входа в разговор
-def start(update, _):
-    # Список кнопок для ответа
-    reply_keyboard = [['Boy', 'Girl', 'Other']]
-    # Создаем простую клавиатуру для ответа
-    markup_key = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    # Начинаем разговор с вопроса
-    update.message.reply_text(
-        'Меня зовут профессор Бот. Я проведу с вами беседу. '
-        'Команда /cancel, чтобы прекратить разговор.\n\n'
-        'Ты мальчик или девочка?',
-        reply_markup=markup_key,)
-    # переходим к этапу `GENDER`, это значит, что ответ
-    # отправленного сообщения в виде кнопок будет список 
-    # обработчиков, определенных в виде значения ключа `GENDER`
-    return GENDER
-
-# Обрабатываем пол пользователя
-def gender(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # Пишем в журнал пол пользователя
-    logger.info("Пол %s: %s", user.first_name, update.message.text)
-    # Следующее сообщение с удалением клавиатуры `ReplyKeyboardRemove`
-    update.message.reply_text(
-        'Хорошо. Пришли мне свою фотографию, чтоб я знал как ты '
-        'выглядишь, или отправь /skip, если стесняешься.',
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    # переходим к этапу `PHOTO`
-    return PHOTO
-
-# Обрабатываем фотографию пользователя
-def photo(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # захватываем фото 
-    photo_file = update.message.photo[-1].get_file()
-    # скачиваем фото 
-    photo_file.download(f'{user.first_name}_photo.jpg')
-    # Пишем в журнал сведения о фото
-    logger.info("Фотография %s: %s", user.first_name, f'{user.first_name}_photo.jpg')
-    # Отвечаем на сообщение с фото
-    update.message.reply_text(
-        'Великолепно! А теперь пришли мне свое'
-        ' местоположение, или /skip если параноик..'
-    )
-    # переходим к этапу `LOCATION`
-    return LOCATION
-
-# Обрабатываем команду /skip для фото
-def skip_photo(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # Пишем в журнал сведения о фото
-    logger.info("Пользователь %s не отправил фото.", user.first_name)
-    # Отвечаем на сообщение с пропущенной фотографией
-    update.message.reply_text(
-        'Держу пари, ты выглядишь великолепно! А теперь пришлите мне'
-        ' свое местоположение, или /skip если параноик.'
-    )
-    # переходим к этапу `LOCATION`
-    return LOCATION
-
-# Обрабатываем местоположение пользователя
-def location(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # захватываем местоположение пользователя
-    user_location = update.message.location
-    # Пишем в журнал сведения о местоположении
-    logger.info(
-        "Местоположение %s: %f / %f", user.first_name, user_location.latitude, user_location.longitude)
-    # Отвечаем на сообщение с местоположением
-    update.message.reply_text(
-        'Может быть, я смогу как-нибудь навестить тебя!' 
-        ' Расскажи мне что-нибудь о себе...'
-    )
-    # переходим к этапу `BIO`
-    return BIO
-
-# Обрабатываем команду /skip для местоположения
-def skip_location(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # Пишем в журнал сведения о местоположении
-    logger.info("User %s did not send a location.", user.first_name)
-    # Отвечаем на сообщение с пропущенным местоположением
-    update.message.reply_text(
-        'Точно параноик! Ну ладно, тогда расскажи мне что-нибудь о себе...'
-    )
-    # переходим к этапу `BIO`
-    return BIO
-
-# Обрабатываем сообщение с рассказом/биографией пользователя
-def bio(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # Пишем в журнал биографию или рассказ пользователя
-    logger.info("Пользователь %s рассказал: %s", user.first_name, update.message.text)
-    # Отвечаем на то что пользователь рассказал.
-    update.message.reply_text('Спасибо! Надеюсь, когда-нибудь снова сможем поговорить.')
-    # Заканчиваем разговор.
-    return ConversationHandler.END
-
-# Обрабатываем команду /cancel если пользователь отменил разговор
-def cancel(update, _):
-    # определяем пользователя
-    user = update.message.from_user
-    # Пишем в журнал о том, что пользователь не разговорчивый
-    logger.info("Пользователь %s отменил разговор.", user.first_name)
-    # Отвечаем на отказ поговорить
-    update.message.reply_text(
-        'Мое дело предложить - Ваше отказаться'
-        ' Будет скучно - пиши.', 
-        reply_markup=ReplyKeyboardRemove()
-    )
-    # Заканчиваем разговор.
-    return ConversationHandler.END
+bot = telebot.TeleBot(TOKEN())
+NUMBERS = 0
+def MATH(n):
+    if NUMBERS == 1:
+        sum(n)
+    elif NUMBERS == 2:
+        sub(n)
+    elif NUMBERS == 3:
+        mulf(n)
+    elif NUMBERS == 4:
+        div(n)
 
 
-if __name__ == '__main__':
-    # Создаем Updater и передаем ему токен вашего бота.
-    updater = Updater("5632307152:AAGDw5TsUpEqnIEBEjaV9hHxjP808ndFL48")
-    # получаем диспетчера для регистрации обработчиков
-    dispatcher = updater.dispatcher
+@bot.message_handler(commands=['start'])
+def start(message):
+    mess = f'Рад видить вас {message.from_user.first_name} {message.from_user.last_name}\nЯ бот калькулятор узнать больше /help'
+    bot.send_message(message.chat.id, mess, parse_mode='html')
 
-    # Определяем обработчик разговоров `ConversationHandler` 
-    # с состояниями GENDER, PHOTO, LOCATION и BIO
-    conv_handler = ConversationHandler( # здесь строится логика разговора
-        # точка входа в разговор
-        entry_points=[CommandHandler('start', start)],
-        # этапы разговора, каждый со своим списком обработчиков сообщений
-        states={
-            GENDER: [MessageHandler(Filters.regex('^(Boy|Girl|Other)$'), gender)],
-            PHOTO: [MessageHandler(Filters.photo, photo), CommandHandler('skip', skip_photo)],
-            LOCATION: [
-                MessageHandler(Filters.location, location),
-                CommandHandler('skip', skip_location),
-            ],
-            BIO: [MessageHandler(Filters.text & ~Filters.command, bio)],
-        },
-        # точка выхода из разговора
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
+@bot.message_handler(commands=['help'])
+def start(message):
+    mess = 'Я бот калькулятор могу посчитать \nСумма введите /sum' \
+           '\nРазница введите /sub\nУмножение /mult\nДеление /div'
+    bot.send_message(message.chat.id, mess, parse_mode='html')
 
-    # Добавляем обработчик разговоров `conv_handler`
-    dispatcher.add_handler(conv_handler)
+@bot.message_handler(commands=['sum'])
+def start_Sum(message):
+    global NUMBERS
+    NUMBERS = 1
+    bot.send_message(message.chat.id,'Введите число', parse_mode='html')
+@bot.message_handler(commands=['sub'])
+def start(message):
+    global NUMBERS
+    NUMBERS = 2
+    bot.send_message(message.chat.id, 'Введите число', parse_mode='html')
+@bot.message_handler(commands=['div'])
+def start(message):
+    global NUMBERS
+    NUMBERS = 3
+    bot.send_message(message.chat.id, 'Введите число', parse_mode='html')
+@bot.message_handler(commands=['sum'])
+def start(message):
+    bot.send_message(message.chat.id, 'Введите числа ', parse_mode='html')
+    n = message.text
+    if n.replace("-", "").replace(".", "").replace(" ", "").isdigit():
+        bot.send_message(message.chat.id, sum(n), parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, 'ERROR ввели не число', parse_mode='html')
 
-    # Запуск бота
-    updater.start_polling()
-    updater.idle()
 
-# import telebot
-# bot = telebot.TeleBot("5632307152:AAGDw5TsUpEqnIEBEjaV9hHxjP808ndFL48")
 
-# # Handles all text messages that contains the commands '/start' or '/help'.
-# @bot.message_handler(commands=['start', 'help'])
-# def handle_start_help(message):
-# 	pass
 
-# # Handles all sent documents and audio files
-# @bot.message_handler(content_types=['document', 'audio'])
-# def handle_docs_audio(message):
-# 	pass
 
-# # Handles all text messages that match the regular expression
-# @bot.message_handler(regexp="SOME_REGEXP")
-# def handle_message(message):
-# 	pass
-
-# # Handles all messages for which the lambda returns True
-# @bot.message_handler(func=lambda message: message.document.mime_type == 'text/plain', content_types=['document'])
-# def handle_text_doc(message):
-# 	pass
-
-# # Which could also be defined as:
-# def test_message(message):
-# 	return message.document.mime_type == 'text/plain'
-
-# @bot.message_handler(func=test_message, content_types=['document'])
-# def handle_text_doc(message):
-# 	pass
-
-# # Handlers can be stacked to create a function which will be called if either message_handler is eligible
-# # This handler will be called if the message starts with '/hello' OR is some emoji
-# @bot.message_handler(commands=['hello'])
-# @bot.message_handler(func=lambda msg: msg.text.encode("utf-8") == SOME_FANCY_EMOJI)
-# def send_something(message):
-#     pass
+bot.polling(none_stop=True)
