@@ -50,7 +50,7 @@ def start(message):
     item2 = types.InlineKeyboardButton(
         "Комплексные числа", callback_data='/com')
     markup.add(item, item2)
-
+    Logg(message, "Выбрали старт")
     bot.send_message(message.chat.id, 'Выбери: ', reply_markup=markup)
 
 
@@ -156,6 +156,7 @@ def send_text(message):
         else:
             bot.send_message(
                 message.chat.id, "ERROR вы ввели не число или совершили ошибку", parse_mode='html')
+            Logg(message, "ERROR вы ввели не число или совершили ошибку")
 
 
 bot.polling()
