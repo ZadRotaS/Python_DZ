@@ -1,0 +1,2 @@
+def TOKEN():
+    return '5632307152:AAGDw5TsUpEqnIEBEjaV9hHxjP808ndFL48'
